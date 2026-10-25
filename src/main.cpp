@@ -1,30 +1,20 @@
 #include <Arduino.h>
+#include <driver/adc.h>
 
 #define PREFIX "[Binome 25 - TAGNON & KPANOU]"
-#define BTN_PIN 27
-
-volatile int counter = 0;
-volatile unsigned long lastIrq = 0;
-int lastPrinted = 0;
-
-void IRAM_ATTR onRelease() {
-  unsigned long now = millis();
-  if (now - lastIrq > 50) {   // anti-rebond 50 ms
-    counter++;
-    lastIrq = now;
-  }
-}
+#define LDR_PIN 36   // GPIO 36 = ADC1_CH0 (broche VP)
 
 void setup() {
   Serial.begin(115200);
-  pinMode(BTN_PIN, INPUT);
-  // FALLING = relâchement (HIGH -> LOW) avec pull-down externe
-  attachInterrupt(digitalPinToInterrupt(BTN_PIN), onRelease, FALLING);
+  // Atténuation 12 dB : plage mesurable 150 mV à 3100 mV
+  analogSetPinAttenuation(LDR_PIN, (adc_attenuation_t)ADC_ATTEN_DB_12);
+  analogSetWidth(12);   // résolution 12 bits : 0 à 4095
 }
 
 void loop() {
-  if (counter != lastPrinted) {
-    lastPrinted = counter;
-    Serial.println(String(PREFIX) + " Compteur (interruption) = " + String(lastPrinted));
-  }
+  int value = analogRead(LDR_PIN);                 // 0 à 4095
+  int millivolts = analogReadMilliVolts(LDR_PIN);  // tension lue en mV
+  Serial.println(String(PREFIX) + " LDR = " + String(value)
+                 + " (0-4095), " + String(millivolts) + " mV");
+  delay(1000);   // une lecture par seconde
 }
